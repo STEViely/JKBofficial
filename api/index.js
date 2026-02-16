@@ -1,60 +1,44 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import { Storage } from "@google-cloud/storage";
+import { google } from "googleapis";
 
-dotenv.config();
-
-const app = express();
-
-// CORS
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-  }),
-);
-
-app.use(express.json());
-
-// Google Cloud Storage
-const storage = new Storage({
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-});
-
-const bucketName = process.env.GCS_BUCKET_NAME;
-const bucket = storage.bucket(bucketName);
-
-// Test route
-app.get("/", (req, res) => {
-  res.send("Backend running");
-});
-
-// Get signed URL for image
-app.get("/api/photos/:id", async (req, res) => {
+export default async function handler(req, res) {
   try {
-    const fileName = req.params.id;
-    const file = bucket.file(fileName);
+    const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 
-    const [exists] = await file.exists();
-    if (!exists) {
-      return res.status(404).json({ error: "File not found" });
-    }
+    // 🔥 บรรทัดสำคัญ
+    serviceAccount.private_key = serviceAccount.private_key.replace(
+      /\\n/g,
+      "\n",
+    );
 
-    const [url] = await file.getSignedUrl({
-      action: "read",
-      expires: Date.now() + 1000 * 60 * 5, // 5 นาที
+    const auth = new google.auth.JWT({
+      email: serviceAccount.client_email,
+      key: serviceAccount.private_key,
+      scopes: ["https://www.googleapis.com/auth/drive.readonly"],
     });
 
-    res.json({ url });
-  } catch (error) {
-    console.error("Error generating signed URL:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    const drive = google.drive({
+      version: "v3",
+      auth,
+    });
+
+    const folderId = req.query.folderId;
+
+    if (!folderId) {
+      return res.status(400).json({ error: "Missing folderId" });
+    }
+
+    const response = await drive.files.list({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: "files(id, name, mimeType)",
+    });
+
+    res.status(200).json({
+      files: response.data.files,
+    });
+  } catch (err) {
+    console.error("Drive Error:", err);
+    res.status(500).json({
+      error: err.message,
+    });
   }
-});
-
-const PORT = process.env.PORT || 4000;
-
-app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
-});
+}
