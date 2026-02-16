@@ -1,11 +1,8 @@
-require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
 const { google } = require("googleapis");
 
 const app = express();
-const PORT = process.env.PORT || 4000;
 
 /* ==============================
    CORS
@@ -13,16 +10,29 @@ const PORT = process.env.PORT || 4000;
 
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL || "http://localhost:8080"],
+    origin: true, // กันพลาด CORS บน production
   }),
 );
 
 /* ==============================
-   Google Drive Setup
-   ✅ ใช้ GOOGLE_APPLICATION_CREDENTIALS จาก .env
+   Base URL (สำคัญมาก)
 ============================== */
 
+const BASE_URL = process.env.BASE_URL || "http://localhost:4000";
+
+/* ==============================
+   Google Drive Setup (Vercel Safe)
+============================== */
+
+// 🔥 ต้องตั้งค่า GOOGLE_SERVICE_ACCOUNT ใน Vercel
+if (!process.env.GOOGLE_SERVICE_ACCOUNT) {
+  throw new Error("Missing GOOGLE_SERVICE_ACCOUNT environment variable");
+}
+
+const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+
 const auth = new google.auth.GoogleAuth({
+  credentials: credentials,
   scopes: ["https://www.googleapis.com/auth/drive.readonly"],
 });
 
@@ -47,13 +57,11 @@ app.get("/api/photos/:folderId", async (req, res) => {
   try {
     const { folderId } = req.params;
 
-    // 1️⃣ ดึงชื่อโฟลเดอร์
     const folderMeta = await drive.files.get({
       fileId: folderId,
       fields: "name",
     });
 
-    // 2️⃣ ดึงไฟล์ในโฟลเดอร์
     const response = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
       fields: "files(id, name, mimeType)",
@@ -66,12 +74,8 @@ app.get("/api/photos/:folderId", async (req, res) => {
         id: file.id,
         name: file.name,
         type: isFolder ? "folder" : "image",
-        previewUrl: !isFolder
-          ? `http://localhost:${PORT}/api/preview/${file.id}`
-          : null,
-        downloadUrl: !isFolder
-          ? `http://localhost:${PORT}/api/download/${file.id}`
-          : null,
+        previewUrl: !isFolder ? `${BASE_URL}/api/preview/${file.id}` : null,
+        downloadUrl: !isFolder ? `${BASE_URL}/api/download/${file.id}` : null,
       };
     });
 
@@ -162,9 +166,7 @@ app.get("/debug/list-export", async (req, res) => {
 });
 
 /* ==============================
-   Start Server
+   Export สำหรับ Vercel
 ============================== */
 
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running on http://localhost:${PORT}`);
-});
+module.exports = app;
