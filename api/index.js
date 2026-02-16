@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       auth,
     });
 
-    const folderId = req.query.folderId;
+    const folderId = req.query.folderId || req.url.split("/").pop();
 
     if (!folderId) {
       return res.status(400).json({ error: "Missing folderId" });
