@@ -1,10 +1,11 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const { google } = require("googleapis");
-const path = require("path");
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 /* ==============================
    CORS
@@ -12,16 +13,16 @@ const PORT = 4000;
 
 app.use(
   cors({
-    origin: ["http://localhost:8080"],
+    origin: [process.env.FRONTEND_URL || "http://localhost:8080"],
   }),
 );
 
 /* ==============================
    Google Drive Setup
+   ✅ ใช้ GOOGLE_APPLICATION_CREDENTIALS จาก .env
 ============================== */
 
 const auth = new google.auth.GoogleAuth({
-  keyFile: path.join(__dirname, "service-account.json"),
   scopes: ["https://www.googleapis.com/auth/drive.readonly"],
 });
 
@@ -40,20 +41,19 @@ app.get("/", (req, res) => {
 
 /* ==============================
    List folders OR images
-   ✅ FIXED: Now returns folderName + files
 ============================== */
 
 app.get("/api/photos/:folderId", async (req, res) => {
   try {
     const { folderId } = req.params;
 
-    // 🔥 1. ดึงชื่อโฟลเดอร์ก่อน
+    // 1️⃣ ดึงชื่อโฟลเดอร์
     const folderMeta = await drive.files.get({
       fileId: folderId,
       fields: "name",
     });
 
-    // 🔥 2. ดึงไฟล์ในโฟลเดอร์
+    // 2️⃣ ดึงไฟล์ในโฟลเดอร์
     const response = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
       fields: "files(id, name, mimeType)",
@@ -75,13 +75,12 @@ app.get("/api/photos/:folderId", async (req, res) => {
       };
     });
 
-    // ✅ ส่งกลับเป็น object แทน array
     res.json({
       folderName: folderMeta.data.name,
-      files: files,
+      files,
     });
   } catch (err) {
-    console.error("List error:", err.message);
+    console.error("List error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -108,7 +107,7 @@ app.get("/api/preview/:fileId", async (req, res) => {
 
     file.data.pipe(res);
   } catch (err) {
-    console.error("Preview error:", err.message);
+    console.error("Preview error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -139,7 +138,7 @@ app.get("/api/download/:fileId", async (req, res) => {
 
     file.data.pipe(res);
   } catch (err) {
-    console.error("Download error:", err.message);
+    console.error("Download error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -157,7 +156,7 @@ app.get("/debug/list-export", async (req, res) => {
 
     res.json(response.data.files);
   } catch (err) {
-    console.error("DEBUG LIST ERROR:", err.message);
+    console.error("DEBUG LIST ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
