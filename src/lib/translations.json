@@ -1,0 +1,138 @@
+{
+  "th": {
+    "nav": {
+      "home": "หน้าหลัก",
+      "about": "เกี่ยวกับเรา",
+      "portfolio": "ผลงาน",
+      "download": "ดาวน์โหลดรูปภาพ",
+      "contact": "ติดต่อเรา"
+    },
+    "hero": {
+      "title": "JKB PRODUCTION",
+      "subtitle": "สร้างสรรค์ผลงานด้วยความเป็นมืออาชีพ",
+      "cta": "ดูผลงานของเรา"
+    },
+    "categories": {
+      "title": "บริการของเรา",
+      "wedding": "งานแต่ง",
+      "ordination": "งานบวช",
+      "photobooth": "โฟโต้บูท",
+      "product": "ถ่ายสินค้า",
+      "event": "อีเว้นต์",
+      "corporate": "งานองค์กร"
+    },
+    "about": {
+      "title": "เกี่ยวกับเรา",
+      "subtitle": "ทีมงานมืออาชีพ 4 คนที่พร้อมสร้างสรรค์ผลงานให้คุณ"
+    },
+    "portfolio": {
+      "title": "ผลงาน",
+      "photo": "ภาพนิ่ง",
+      "video": "วิดีโอ"
+    },
+    "download": {
+      "title": "ดาวน์โหลดรูปภาพ",
+      "subtitle": "เลือกงานเพื่อดูและดาวน์โหลดรูปภาพ",
+      "viewPhotos": "ดูรูปภาพ"
+    },
+    "contact": {
+      "title": "ติดต่อเรา",
+      "name": "ชื่อ",
+      "email": "อีเมล",
+      "message": "ข้อความ",
+      "send": "ส่งข้อความ",
+      "phone": "โทรศัพท์",
+      "address": "ที่อยู่"
+    },
+    "footer": {
+      "rights": "สงวนลิขสิทธิ์ทุกประการ"
+    },
+    "members": {
+      "role1": "ช่างภาพ / Photographer",
+      "role2": "ช่างวิดีโอ / Videographer",
+      "role3": "ครีเอทีฟ / Creative",
+      "role4": "ผู้จัดการ / Manager"
+    },
+    "all": "ทั้งหมด",
+    "portfolioCategories": {
+      "wedding": "งานแต่ง",
+      "ordination": "งานบวช",
+      "event": "อีเว้นต์",
+      "product": "ถ่ายสินค้า"
+    },
+    "downloadEvents": {
+      "event1": "งานแต่ง คุณ A & คุณ B",
+      "event2": "งานบวช คุณ C",
+      "event3": "อีเว้นต์ XYZ Corp",
+      "event4": "ถ่ายสินค้า Brand D"
+    }
+  },
+  "en": {
+    "nav": {
+      "home": "Home",
+      "about": "About",
+      "portfolio": "Portfolio",
+      "download": "Download",
+      "contact": "Contact"
+    },
+    "hero": {
+      "title": "JKB PRODUCTION",
+      "subtitle": "Creating professional content with passion",
+      "cta": "View Our Work"
+    },
+    "categories": {
+      "title": "Our Services",
+      "wedding": "Wedding",
+      "ordination": "Ordination",
+      "photobooth": "Photo Booth",
+      "product": "Product",
+      "event": "Event",
+      "corporate": "Corporate"
+    },
+    "about": {
+      "title": "About Us",
+      "subtitle": "A team of 4 professionals ready to create for you"
+    },
+    "portfolio": {
+      "title": "Portfolio",
+      "photo": "Photography",
+      "video": "Videography"
+    },
+    "download": {
+      "title": "Download Photos",
+      "subtitle": "Select an event to view and download photos",
+      "viewPhotos": "View Photos"
+    },
+    "contact": {
+      "title": "Contact Us",
+      "name": "Name",
+      "email": "Email",
+      "message": "Message",
+      "send": "Send Message",
+      "phone": "Phone",
+      "address": "Address"
+    },
+    "footer": {
+      "rights": "All rights reserved"
+    },
+    "members": {
+      "role1": "Photographer",
+      "role2": "Videographer",
+      "role3": "Creative Director",
+      "role4": "Project Manager"
+    },
+    "all": "All",
+    "portfolioCategories": {
+      "wedding": "Wedding",
+      "ordination": "Ordination",
+      "event": "Event",
+      "product": "Product"
+    },
+    "downloadEvents": {
+      "event1": "Wedding: A & B",
+      "event2": "Ordination: C",
+      "event3": "Event: XYZ Corp",
+      "event4": "Product: Brand D"
+    }
+  }
+}
