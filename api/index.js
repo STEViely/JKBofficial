@@ -4,7 +4,6 @@ export default async function handler(req, res) {
   try {
     const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 
-    // 🔥 บรรทัดสำคัญ
     serviceAccount.private_key = serviceAccount.private_key.replace(
       /\\n/g,
       "\n",
@@ -21,7 +20,7 @@ export default async function handler(req, res) {
       auth,
     });
 
-    const folderId = req.query.folderId || req.url.split("/").pop();
+    const { folderId } = req.query;
 
     if (!folderId) {
       return res.status(400).json({ error: "Missing folderId" });
@@ -32,8 +31,20 @@ export default async function handler(req, res) {
       fields: "files(id, name, mimeType)",
     });
 
+    const files = response.data.files || [];
+
+    // 🔥 แปลงข้อมูลให้ frontend ใช้ได้เลย
+    const formatted = files.map((file) => ({
+      id: file.id,
+      name: file.name,
+      type: file.mimeType.includes("folder") ? "folder" : "image",
+      previewUrl: `https://drive.google.com/uc?export=view&id=${file.id}`,
+      downloadUrl: `https://drive.google.com/uc?export=download&id=${file.id}`,
+    }));
+
     res.status(200).json({
-      files: response.data.files,
+      folderName: "Event Gallery",
+      files: formatted,
     });
   } catch (err) {
     console.error("Drive Error:", err);

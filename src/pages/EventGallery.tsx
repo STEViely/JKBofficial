@@ -11,7 +11,7 @@ interface Photo {
   downloadUrl: string | null;
 }
 
-const REFRESH_INTERVAL = 5000; // 5 วินาที
+const REFRESH_INTERVAL = 5000;
 
 const EventGallery = () => {
   const { folderId } = useParams();
@@ -25,7 +25,7 @@ const EventGallery = () => {
 
   const fetchPhotos = async () => {
     try {
-      const res = await fetch(`http://localhost:4000/api/photos/${folderId}`);
+      const res = await fetch(`/api/photos/${folderId}`);
 
       if (!res.ok) throw new Error("Failed to fetch photos");
 
@@ -40,7 +40,6 @@ const EventGallery = () => {
           (item: Photo) => item.type === "image",
         );
 
-        // อัปเดตเฉพาะตอนมีรูปเพิ่ม
         setPhotos((prev) => {
           if (prev.length !== images.length) {
             return images;
@@ -59,7 +58,6 @@ const EventGallery = () => {
     if (!folderId) return;
 
     setLoading(true);
-
     fetchPhotos();
 
     intervalRef.current = setInterval(fetchPhotos, REFRESH_INTERVAL);
@@ -86,7 +84,6 @@ const EventGallery = () => {
           <p className="text-center text-muted-foreground">ไม่พบรูปภาพ</p>
         )}
 
-        {/* ✅ Masonry Layout (ไม่ crop ไม่บีบภาพ) */}
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {photos.map((photo) => (
             <div key={photo.id} className="break-inside-avoid">
@@ -100,7 +97,6 @@ const EventGallery = () => {
           ))}
         </div>
 
-        {/* Modal */}
         {selected && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
             <div className="relative max-w-5xl w-full px-4">
