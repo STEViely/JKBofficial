@@ -7,5 +7,4 @@ app.get("/api/photos", (req, res) => {
   res.json({ message: "Photos API working 🚀" });
 });
 
-module.exports = app;
-module.exports.handler = serverless(app);
+module.exports = serverless(app);
