@@ -19,9 +19,7 @@ const Download = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await fetch(
-          `http://localhost:4000/api/photos/${EXPORT_FOLDER_ID}`,
-        );
+        const res = await fetch(`/api/photos/${EXPORT_FOLDER_ID}`);
 
         const data = await res.json();
 
