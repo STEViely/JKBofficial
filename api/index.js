@@ -1,165 +1,60 @@
-const express = require("express");
-const cors = require("cors");
-const { google } = require("googleapis");
-const serverless = require("serverless-http");
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { Storage } from "@google-cloud/storage";
+
+dotenv.config();
 
 const app = express();
 
-/* ==============================
-   CORS
-============================== */
+// CORS
 app.use(
   cors({
-    origin: true,
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
   }),
 );
 
-/* ==============================
-   Base URL
-============================== */
-const BASE_URL = process.env.BASE_URL || "";
+app.use(express.json());
 
-/* ==============================
-   Google Drive Setup (Vercel Safe)
-============================== */
-
-// ตรวจสอบ ENV
-if (!process.env.GOOGLE_SERVICE_ACCOUNT) {
-  throw new Error("Missing GOOGLE_SERVICE_ACCOUNT environment variable");
-}
-
-const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-
-const auth = new google.auth.GoogleAuth({
-  credentials: credentials,
-  scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+// Google Cloud Storage
+const storage = new Storage({
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
 });
 
-const drive = google.drive({
-  version: "v3",
-  auth,
-});
+const bucketName = process.env.GCS_BUCKET_NAME;
+const bucket = storage.bucket(bucketName);
 
-/* ==============================
-   Health Check
-============================== */
+// Test route
 app.get("/", (req, res) => {
-  res.send("🚀 Backend running");
+  res.send("Backend running");
 });
 
-/* ==============================
-   List folders OR images
-============================== */
-app.get("/api/photos/:folderId", async (req, res) => {
+// Get signed URL for image
+app.get("/api/photos/:id", async (req, res) => {
   try {
-    const { folderId } = req.params;
+    const fileName = req.params.id;
+    const file = bucket.file(fileName);
 
-    const folderMeta = await drive.files.get({
-      fileId: folderId,
-      fields: "name",
+    const [exists] = await file.exists();
+    if (!exists) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    const [url] = await file.getSignedUrl({
+      action: "read",
+      expires: Date.now() + 1000 * 60 * 5, // 5 นาที
     });
 
-    const response = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false`,
-      fields: "files(id, name, mimeType)",
-    });
-
-    const files = response.data.files.map((file) => {
-      const isFolder = file.mimeType === "application/vnd.google-apps.folder";
-
-      return {
-        id: file.id,
-        name: file.name,
-        type: isFolder ? "folder" : "image",
-        previewUrl: !isFolder ? `/api/preview/${file.id}` : null,
-        downloadUrl: !isFolder ? `/api/download/${file.id}` : null,
-      };
-    });
-
-    res.json({
-      folderName: folderMeta.data.name,
-      files,
-    });
-  } catch (err) {
-    console.error("List error:", err);
-    res.status(500).json({ error: err.message });
+    res.json({ url });
+  } catch (error) {
+    console.error("Error generating signed URL:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-/* ==============================
-   Preview image
-============================== */
-app.get("/api/preview/:fileId", async (req, res) => {
-  try {
-    const { fileId } = req.params;
+const PORT = process.env.PORT || 4000;
 
-    const meta = await drive.files.get({
-      fileId,
-      fields: "mimeType",
-    });
-
-    res.setHeader("Content-Type", meta.data.mimeType);
-
-    const file = await drive.files.get(
-      { fileId, alt: "media" },
-      { responseType: "stream" },
-    );
-
-    file.data.pipe(res);
-  } catch (err) {
-    console.error("Preview error:", err);
-    res.status(500).json({ error: err.message });
-  }
+app.listen(PORT, () => {
+  console.log(`Backend running on port ${PORT}`);
 });
-
-/* ==============================
-   Download image
-============================== */
-app.get("/api/download/:fileId", async (req, res) => {
-  try {
-    const { fileId } = req.params;
-
-    const meta = await drive.files.get({
-      fileId,
-      fields: "name, mimeType",
-    });
-
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${meta.data.name}"`,
-    );
-    res.setHeader("Content-Type", meta.data.mimeType);
-
-    const file = await drive.files.get(
-      { fileId, alt: "media" },
-      { responseType: "stream" },
-    );
-
-    file.data.pipe(res);
-  } catch (err) {
-    console.error("Download error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/* ==============================
-   Debug Route
-============================== */
-app.get("/api/debug/list-export", async (req, res) => {
-  try {
-    const response = await drive.files.list({
-      q: `'16BXIEtTdZV35udjnxYGSIkjQkQLKYGXu' in parents`,
-      fields: "files(id, name, mimeType)",
-    });
-
-    res.json(response.data.files);
-  } catch (err) {
-    console.error("DEBUG LIST ERROR:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/* ==============================
-   Export for Vercel
-============================== */
-module.exports = serverless(app);
