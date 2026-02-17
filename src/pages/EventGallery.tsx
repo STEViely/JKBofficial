@@ -76,7 +76,7 @@ const EventGallery = () => {
     }
   }, [selectedIndex]);
 
-  /* ================= KEYBOARD ================= */
+  /* ================= NAVIGATION ================= */
 
   const goNext = useCallback(() => {
     if (selectedIndex === null) return;
@@ -142,7 +142,6 @@ const EventGallery = () => {
           <p className="text-center">ไม่พบรูปภาพ</p>
         )}
 
-        {/* GRID */}
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {photos.map((photo, index) => (
             <div key={photo.id} className="break-inside-avoid">
@@ -164,11 +163,11 @@ const EventGallery = () => {
 
         {selectedIndex !== null && photos[selectedIndex] && (
           <div
-            className="fixed inset-0 bg-black/90 z-50"
+            className="fixed inset-0 bg-black/90 z-50 flex flex-col"
             onClick={() => setSelectedIndex(null)}
           >
-            <div className="relative w-full h-full flex items-center justify-center">
-              {/* CONTENT WRAPPER */}
+            {/* IMAGE AREA */}
+            <div className="flex-1 flex items-center justify-center relative">
               <div
                 className="relative flex items-center justify-center"
                 onClick={(e) => e.stopPropagation()}
@@ -181,17 +180,17 @@ const EventGallery = () => {
                   <X size={24} />
                 </button>
 
-                {/* DESKTOP ARROWS */}
+                {/* DESKTOP ARROWS (สีเดียวกับปุ่ม Download) */}
                 <button
                   onClick={goPrev}
-                  className="hidden md:flex absolute left-[-70px] bg-black/70 p-4 rounded-full text-white z-20"
+                  className="hidden md:flex absolute left-[-70px] bg-primary p-4 rounded-full text-white z-20"
                 >
                   <ChevronLeft size={28} />
                 </button>
 
                 <button
                   onClick={goNext}
-                  className="hidden md:flex absolute right-[-70px] bg-black/70 p-4 rounded-full text-white z-20"
+                  className="hidden md:flex absolute right-[-70px] bg-primary p-4 rounded-full text-white z-20"
                 >
                   <ChevronRight size={28} />
                 </button>
@@ -211,36 +210,38 @@ const EventGallery = () => {
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                 />
-
-                {/* ZOOM */}
-                <div className="absolute bottom-20 flex gap-4 z-20">
-                  <button
-                    onClick={() => setScale((s) => Math.min(s + 0.3, 3))}
-                    className="bg-black/70 p-3 rounded-full text-white"
-                  >
-                    <ZoomIn />
-                  </button>
-                  <button
-                    onClick={() => setScale((s) => Math.max(s - 0.3, 1))}
-                    className="bg-black/70 p-3 rounded-full text-white"
-                  >
-                    <ZoomOut />
-                  </button>
-                </div>
-
-                {/* DOWNLOAD */}
-                {photos[selectedIndex].downloadUrl && (
-                  <a
-                    href={photos[selectedIndex].downloadUrl}
-                    download
-                    className="absolute bottom-6 bg-primary text-white px-6 py-3 rounded-lg flex items-center gap-2 z-20"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Download size={18} />
-                    Download
-                  </a>
-                )}
               </div>
+            </div>
+
+            {/* CONTROL BAR (ไม่ทับรูป) */}
+            <div
+              className="bg-black px-6 py-6 flex justify-center items-center gap-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setScale((s) => Math.min(s + 0.3, 3))}
+                className="bg-primary p-3 rounded-full text-white"
+              >
+                <ZoomIn />
+              </button>
+
+              <button
+                onClick={() => setScale((s) => Math.max(s - 0.3, 1))}
+                className="bg-primary p-3 rounded-full text-white"
+              >
+                <ZoomOut />
+              </button>
+
+              {photos[selectedIndex].downloadUrl && (
+                <a
+                  href={photos[selectedIndex].downloadUrl}
+                  download
+                  className="bg-primary text-white px-6 py-3 rounded-lg flex items-center gap-2"
+                >
+                  <Download size={18} />
+                  Download
+                </a>
+              )}
             </div>
           </div>
         )}
