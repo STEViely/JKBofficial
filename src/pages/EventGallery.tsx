@@ -150,40 +150,27 @@ const EventGallery = () => {
 
         {selectedIndex !== null && photos[selectedIndex] && (
           <div
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
             onClick={() => setSelectedIndex(null)}
           >
             <div
               className="relative flex flex-col items-center"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* ❌ ปุ่มปิด — ไม่ทับภาพ */}
+              {/* Close (ไม่ทับภาพ) */}
               <button
-                className="absolute -top-14 right-0 bg-black/80 p-3 rounded-full text-white z-30"
+                className="absolute -top-12 right-0 bg-black/80 p-3 rounded-full text-white z-30"
                 onClick={() => setSelectedIndex(null)}
               >
                 <X size={22} />
               </button>
 
-              <button
-                onClick={goPrev}
-                className="hidden md:flex absolute left-[-70px] bg-primary p-4 rounded-full text-white z-20"
-              >
-                <ChevronLeft size={28} />
-              </button>
-
-              <button
-                onClick={goNext}
-                className="hidden md:flex absolute right-[-70px] bg-primary p-4 rounded-full text-white z-20"
-              >
-                <ChevronRight size={28} />
-              </button>
-
+              {/* Image */}
               <div className="relative">
                 <img
                   src={photos[selectedIndex].previewUrl || ""}
                   alt={photos[selectedIndex].name}
-                  className="max-h-[80vh] max-w-[92vw] transition-transform duration-300"
+                  className="max-h-[75vh] max-w-[92vw] object-contain transition-transform duration-300"
                   style={{
                     transform: `translateX(${translateX}px) scale(${scale})`,
                   }}
@@ -195,34 +182,50 @@ const EventGallery = () => {
                   onTouchEnd={handleTouchEnd}
                 />
 
-                <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setScale((s) => Math.min(s + 0.3, 3))}
-                      className="bg-primary p-3 rounded-full text-white shadow-md"
-                    >
-                      <ZoomIn size={20} />
-                    </button>
+                {/* Arrows */}
+                <button
+                  onClick={goPrev}
+                  className="hidden md:flex absolute -left-16 top-1/2 -translate-y-1/2 bg-primary p-4 rounded-full text-white"
+                >
+                  <ChevronLeft size={28} />
+                </button>
 
-                    <button
-                      onClick={() => setScale((s) => Math.max(s - 0.3, 1))}
-                      className="bg-primary p-3 rounded-full text-white shadow-md"
-                    >
-                      <ZoomOut size={20} />
-                    </button>
-                  </div>
+                <button
+                  onClick={goNext}
+                  className="hidden md:flex absolute -right-16 top-1/2 -translate-y-1/2 bg-primary p-4 rounded-full text-white"
+                >
+                  <ChevronRight size={28} />
+                </button>
+              </div>
 
-                  {photos[selectedIndex].downloadUrl && (
-                    <a
-                      href={photos[selectedIndex].downloadUrl}
-                      download
-                      className="bg-primary text-white px-5 py-3 rounded-lg flex items-center gap-2 shadow-md"
-                    >
-                      <Download size={18} />
-                      Download
-                    </a>
-                  )}
+              {/* CONTROL BAR ใต้รูป ชิดขอบล่างภาพ */}
+              <div className="mt-3 w-full max-w-[92vw] flex justify-between items-center px-2">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setScale((s) => Math.min(s + 0.3, 3))}
+                    className="bg-primary p-3 rounded-full text-white shadow-md"
+                  >
+                    <ZoomIn size={20} />
+                  </button>
+
+                  <button
+                    onClick={() => setScale((s) => Math.max(s - 0.3, 1))}
+                    className="bg-primary p-3 rounded-full text-white shadow-md"
+                  >
+                    <ZoomOut size={20} />
+                  </button>
                 </div>
+
+                {photos[selectedIndex].downloadUrl && (
+                  <a
+                    href={photos[selectedIndex].downloadUrl}
+                    download
+                    className="bg-primary text-white px-5 py-3 rounded-lg flex items-center gap-2 shadow-md"
+                  >
+                    <Download size={18} />
+                    Download
+                  </a>
+                )}
               </div>
             </div>
           </div>
