@@ -157,11 +157,12 @@ const EventGallery = () => {
               className="relative flex flex-col items-center"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* ❌ ปุ่มปิด — ไม่ทับภาพ */}
               <button
-                className="absolute top-4 right-4 bg-black/70 p-3 rounded-full text-white z-20"
+                className="absolute -top-14 right-0 bg-black/80 p-3 rounded-full text-white z-30"
                 onClick={() => setSelectedIndex(null)}
               >
-                <X size={24} />
+                <X size={22} />
               </button>
 
               <button
@@ -194,7 +195,6 @@ const EventGallery = () => {
                   onTouchEnd={handleTouchEnd}
                 />
 
-                {/* CONTROL BUTTONS — ชิดขอบภาพล่าง */}
                 <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
                   <div className="flex gap-3">
                     <button
