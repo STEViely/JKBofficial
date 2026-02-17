@@ -5,20 +5,20 @@ export default async function handler(req, res) {
     const { folderId } = req.query;
 
     if (!folderId) {
-      return res.status(400).json({ error: "Missing folderId" });
+      return res.status(400).json({
+        error: "Missing folderId",
+      });
     }
 
-    /* ================= AUTH ================= */
-
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-      return res
-        .status(500)
-        .json({ error: "Missing GOOGLE_SERVICE_ACCOUNT_JSON" });
+      return res.status(500).json({
+        error: "Missing GOOGLE_SERVICE_ACCOUNT_JSON",
+      });
     }
 
     const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 
-    // 🔥 กันปัญหา private_key มี \n
+    // 🔥 แก้ปัญหา private_key บน Vercel
     if (credentials.private_key) {
       credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
     }
@@ -33,8 +33,7 @@ export default async function handler(req, res) {
       auth,
     });
 
-    /* ================= FOLDER META ================= */
-
+    // ดึงชื่อโฟลเดอร์
     const folderMeta = await drive.files.get({
       fileId: folderId,
       fields: "name",
@@ -42,34 +41,26 @@ export default async function handler(req, res) {
 
     const folderName = folderMeta.data.name || "Event Gallery";
 
-    /* ================= FILE LIST ================= */
-
+    // ดึงรูป เรียงใหม่ล่าสุดก่อน
     const response = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
       fields: "files(id, name, mimeType, createdTime)",
-      orderBy: "createdTime desc", // 🔥 ใหม่สุดก่อน
-      pageSize: 1000, // 🔥 รองรับไฟล์เยอะ
+      orderBy: "createdTime desc",
+      pageSize: 1000,
     });
 
     const files =
-      response.data.files?.filter(
-        (file) => file.mimeType && file.mimeType.startsWith("image/"),
+      response.data.files?.filter((file) =>
+        file.mimeType?.startsWith("image/"),
       ) || [];
 
     const formattedFiles = files.map((file) => ({
       id: file.id,
       name: file.name,
-      type: "image",
       createdTime: file.createdTime,
-
-      // 🔥 โหลดเร็วกว่า view link
       previewUrl: `https://drive.google.com/thumbnail?id=${file.id}&sz=w1200`,
-
-      // 🔥 บังคับดาวน์โหลด ไม่เด้งเข้า Drive
       downloadUrl: `https://drive.google.com/uc?export=download&id=${file.id}`,
     }));
-
-    /* ================= CACHE ================= */
 
     res.setHeader("Cache-Control", "public, max-age=60, s-maxage=60");
 
