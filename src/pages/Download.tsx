@@ -10,7 +10,7 @@ type DriveItem = {
   type: "folder" | "image";
 };
 
-const EXPORT_FOLDER_ID = "16BXIEtTdZV35udjnxYGSIkjQkQLKYGXu";
+const EXPORT_FOLDER_ID = "16BXIEtTdZV35udjnxYGSIkjQkQLKYGXu"; // ID ของโฟลเดอร์หลักที่เก็บอัลบัมทั้งหมด
 
 const Download = () => {
   const [events, setEvents] = useState<DriveItem[]>([]);
