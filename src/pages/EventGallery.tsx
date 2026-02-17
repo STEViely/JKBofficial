@@ -77,6 +77,19 @@ const EventGallery = () => {
     }
   }, [selectedIndex]);
 
+  /* ================= CLOSE ON ESC ================= */
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedIndex(null);
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  });
+
   /* ================= NAVIGATION ================= */
 
   const goNext = useCallback(() => {
@@ -93,21 +106,6 @@ const EventGallery = () => {
     setTranslateX(0);
   }, [selectedIndex, photos.length]);
 
-  /* ================= KEYBOARD ================= */
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (selectedIndex === null) return;
-
-      if (e.key === "ArrowRight") goNext();
-      if (e.key === "ArrowLeft") goPrev();
-      if (e.key === "Escape") setSelectedIndex(null);
-    };
-
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [selectedIndex, goNext, goPrev]);
-
   /* ================= SMOOTH SWIPE ================= */
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -117,10 +115,7 @@ const EventGallery = () => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || touchStartX.current === null) return;
-
-    const currentX = e.touches[0].clientX;
-    const diff = currentX - touchStartX.current;
-
+    const diff = e.touches[0].clientX - touchStartX.current;
     setTranslateX(diff);
   };
 
@@ -138,23 +133,23 @@ const EventGallery = () => {
 
   /* ================= FORCE DOWNLOAD ================= */
 
-  const handleDownload = async (url: string, filename: string) => {
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
+  const handleDownload = (url: string, filename: string) => {
+    if (!url) return;
 
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      console.error(err);
+    // แปลง Google Drive link ให้เป็น direct download
+    const driveMatch = url.match(/\/d\/(.*?)\//);
+    if (driveMatch) {
+      const fileId = driveMatch[1];
+      url = `https://drive.google.com/uc?export=download&id=${fileId}`;
     }
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    link.setAttribute("target", "_blank");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   /* ================= RENDER ================= */
@@ -169,14 +164,12 @@ const EventGallery = () => {
           <p className="text-center">ไม่พบรูปภาพ</p>
         )}
 
-        {/* GRID */}
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {photos.map((photo, index) => (
             <div key={photo.id} className="break-inside-avoid">
               <img
                 src={photo.previewUrl || ""}
                 alt={photo.name}
-                loading="lazy"
                 className="w-full rounded-lg cursor-pointer hover:opacity-80 transition"
                 onClick={() => {
                   setSelectedIndex(index);
@@ -187,15 +180,13 @@ const EventGallery = () => {
           ))}
         </div>
 
-        {/* ================= MODAL ================= */}
-
         {selectedIndex !== null && photos[selectedIndex] && (
           <div
             className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-            onClick={() => setSelectedIndex(null)}
+            onClick={() => setSelectedIndex(null)} // คลิกพื้นหลังปิด
           >
             <div
-              className="relative w-full h-full flex items-center justify-center overflow-hidden"
+              className="relative w-full h-full flex items-center justify-center"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close */}
@@ -206,7 +197,7 @@ const EventGallery = () => {
                 <X size={24} />
               </button>
 
-              {/* Desktop Arrows */}
+              {/* Desktop arrows */}
               <button
                 onClick={goPrev}
                 className="hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 bg-black/70 p-4 rounded-full text-white z-20"
@@ -221,13 +212,10 @@ const EventGallery = () => {
                 <ChevronRight size={28} />
               </button>
 
-              {/* Image */}
               <img
                 src={photos[selectedIndex].previewUrl || ""}
                 alt={photos[selectedIndex].name}
-                className={`max-h-[80vh] max-w-[90vw] transition-transform duration-300 ${
-                  isDragging ? "" : "ease-out"
-                }`}
+                className="max-h-[80vh] max-w-[90vw] transition-transform duration-300"
                 style={{
                   transform: `translateX(${translateX}px) scale(${scale})`,
                 }}
