@@ -215,7 +215,7 @@ const EventGallery = () => {
 
             {/* CONTROL BAR (ไม่ทับรูป) */}
             <div
-              className="bg-black px-6 py-6 flex justify-center items-center gap-6"
+              className="bg-black px-6 py-3 flex justify-center items-center gap-6"
               onClick={(e) => e.stopPropagation()}
             >
               <button
