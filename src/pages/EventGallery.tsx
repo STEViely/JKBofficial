@@ -30,7 +30,6 @@ const EventGallery = () => {
 
   const [translateX, setTranslateX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-
   const touchStartX = useRef<number | null>(null);
 
   /* ================= FETCH ================= */
@@ -77,20 +76,7 @@ const EventGallery = () => {
     }
   }, [selectedIndex]);
 
-  /* ================= CLOSE ON ESC ================= */
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedIndex(null);
-      if (e.key === "ArrowRight") goNext();
-      if (e.key === "ArrowLeft") goPrev();
-    };
-
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  });
-
-  /* ================= NAVIGATION ================= */
+  /* ================= KEYBOARD ================= */
 
   const goNext = useCallback(() => {
     if (selectedIndex === null) return;
@@ -105,6 +91,19 @@ const EventGallery = () => {
     setSelectedIndex((selectedIndex - 1 + photos.length) % photos.length);
     setTranslateX(0);
   }, [selectedIndex, photos.length]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (selectedIndex === null) return;
+
+      if (e.key === "Escape") setSelectedIndex(null);
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [selectedIndex, goNext, goPrev]);
 
   /* ================= SMOOTH SWIPE ================= */
 
@@ -131,27 +130,6 @@ const EventGallery = () => {
     touchStartX.current = null;
   };
 
-  /* ================= FORCE DOWNLOAD ================= */
-
-  const handleDownload = (url: string, filename: string) => {
-    if (!url) return;
-
-    // แปลง Google Drive link ให้เป็น direct download
-    const driveMatch = url.match(/\/d\/(.*?)\//);
-    if (driveMatch) {
-      const fileId = driveMatch[1];
-      url = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    }
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", filename);
-    link.setAttribute("target", "_blank");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   /* ================= RENDER ================= */
 
   return (
@@ -164,12 +142,14 @@ const EventGallery = () => {
           <p className="text-center">ไม่พบรูปภาพ</p>
         )}
 
+        {/* GRID */}
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {photos.map((photo, index) => (
             <div key={photo.id} className="break-inside-avoid">
               <img
                 src={photo.previewUrl || ""}
                 alt={photo.name}
+                loading="lazy"
                 className="w-full rounded-lg cursor-pointer hover:opacity-80 transition"
                 onClick={() => {
                   setSelectedIndex(index);
@@ -180,82 +160,87 @@ const EventGallery = () => {
           ))}
         </div>
 
+        {/* ================= MODAL ================= */}
+
         {selectedIndex !== null && photos[selectedIndex] && (
           <div
-            className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-            onClick={() => setSelectedIndex(null)} // คลิกพื้นหลังปิด
+            className="fixed inset-0 bg-black/90 z-50"
+            onClick={() => setSelectedIndex(null)}
           >
-            <div
-              className="relative w-full h-full flex items-center justify-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Close */}
-              <button
-                className="absolute top-6 right-6 bg-black/70 p-3 rounded-full text-white z-20"
-                onClick={() => setSelectedIndex(null)}
+            <div className="relative w-full h-full flex items-center justify-center">
+              {/* CONTENT WRAPPER */}
+              <div
+                className="relative flex items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
               >
-                <X size={24} />
-              </button>
-
-              {/* Desktop arrows */}
-              <button
-                onClick={goPrev}
-                className="hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 bg-black/70 p-4 rounded-full text-white z-20"
-              >
-                <ChevronLeft size={28} />
-              </button>
-
-              <button
-                onClick={goNext}
-                className="hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 bg-black/70 p-4 rounded-full text-white z-20"
-              >
-                <ChevronRight size={28} />
-              </button>
-
-              <img
-                src={photos[selectedIndex].previewUrl || ""}
-                alt={photos[selectedIndex].name}
-                className="max-h-[80vh] max-w-[90vw] transition-transform duration-300"
-                style={{
-                  transform: `translateX(${translateX}px) scale(${scale})`,
-                }}
-                onDoubleClick={() => setScale((prev) => (prev === 1 ? 1.3 : 1))}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-              />
-
-              {/* Zoom */}
-              <div className="absolute bottom-20 flex gap-4 z-20">
+                {/* CLOSE */}
                 <button
-                  onClick={() => setScale((s) => Math.min(s + 0.3, 3))}
-                  className="bg-black/70 p-3 rounded-full text-white"
+                  className="absolute top-6 right-6 bg-black/70 p-3 rounded-full text-white z-20"
+                  onClick={() => setSelectedIndex(null)}
                 >
-                  <ZoomIn />
+                  <X size={24} />
                 </button>
-                <button
-                  onClick={() => setScale((s) => Math.max(s - 0.3, 1))}
-                  className="bg-black/70 p-3 rounded-full text-white"
-                >
-                  <ZoomOut />
-                </button>
-              </div>
 
-              {/* Download */}
-              {photos[selectedIndex].downloadUrl && (
+                {/* DESKTOP ARROWS */}
                 <button
-                  onClick={() =>
-                    handleDownload(
-                      photos[selectedIndex].downloadUrl!,
-                      photos[selectedIndex].name,
-                    )
+                  onClick={goPrev}
+                  className="hidden md:flex absolute left-[-70px] bg-black/70 p-4 rounded-full text-white z-20"
+                >
+                  <ChevronLeft size={28} />
+                </button>
+
+                <button
+                  onClick={goNext}
+                  className="hidden md:flex absolute right-[-70px] bg-black/70 p-4 rounded-full text-white z-20"
+                >
+                  <ChevronRight size={28} />
+                </button>
+
+                {/* IMAGE */}
+                <img
+                  src={photos[selectedIndex].previewUrl || ""}
+                  alt={photos[selectedIndex].name}
+                  className="max-h-[80vh] max-w-[90vw] transition-transform duration-300"
+                  style={{
+                    transform: `translateX(${translateX}px) scale(${scale})`,
+                  }}
+                  onDoubleClick={() =>
+                    setScale((prev) => (prev === 1 ? 1.3 : 1))
                   }
-                  className="absolute bottom-6 bg-primary text-white px-6 py-3 rounded-lg flex items-center gap-2 z-20"
-                >
-                  <Download size={18} />
-                  Download
-                </button>
-              )}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                />
+
+                {/* ZOOM */}
+                <div className="absolute bottom-20 flex gap-4 z-20">
+                  <button
+                    onClick={() => setScale((s) => Math.min(s + 0.3, 3))}
+                    className="bg-black/70 p-3 rounded-full text-white"
+                  >
+                    <ZoomIn />
+                  </button>
+                  <button
+                    onClick={() => setScale((s) => Math.max(s - 0.3, 1))}
+                    className="bg-black/70 p-3 rounded-full text-white"
+                  >
+                    <ZoomOut />
+                  </button>
+                </div>
+
+                {/* DOWNLOAD */}
+                {photos[selectedIndex].downloadUrl && (
+                  <a
+                    href={photos[selectedIndex].downloadUrl}
+                    download
+                    className="absolute bottom-6 bg-primary text-white px-6 py-3 rounded-lg flex items-center gap-2 z-20"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Download size={18} />
+                    Download
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         )}
