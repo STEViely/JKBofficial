@@ -36,25 +36,12 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Home */}
               <Route path="/" element={<Index />} />
-
-              {/* About */}
               <Route path="/about" element={<About />} />
-
-              {/* Portfolio */}
               <Route path="/portfolio" element={<Portfolio />} />
-
-              {/* Download landing page */}
               <Route path="/download" element={<Download />} />
-
-              {/* Dynamic gallery page (Google Drive folderId) */}
               <Route path="/download/:folderId" element={<EventGallery />} />
-
-              {/* Contact */}
               <Route path="/contact" element={<Contact />} />
-
-              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
