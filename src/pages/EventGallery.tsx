@@ -1,7 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import Layout from "@/components/Layout";
-import { Download, X, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  Download,
+  X,
+  ZoomIn,
+  ZoomOut,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 interface Photo {
   id: string;
@@ -20,10 +27,11 @@ const EventGallery = () => {
   const [loading, setLoading] = useState(true);
   const [folderName, setFolderName] = useState("Event Gallery");
   const [scale, setScale] = useState(1);
-  const [direction, setDirection] = useState<"next" | "prev" | null>(null);
+
+  const [translateX, setTranslateX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const touchStartX = useRef<number | null>(null);
-  const touchCurrentX = useRef<number | null>(null);
 
   /* ================= FETCH ================= */
 
@@ -42,7 +50,7 @@ const EventGallery = () => {
           .sort((a: Photo, b: Photo) => {
             const dateA = new Date(a.createdTime || 0).getTime();
             const dateB = new Date(b.createdTime || 0).getTime();
-            return dateB - dateA; // ล่าสุดก่อนเสมอ
+            return dateB - dateA;
           });
 
         setPhotos(images);
@@ -73,16 +81,16 @@ const EventGallery = () => {
 
   const goNext = useCallback(() => {
     if (selectedIndex === null) return;
-    setDirection("next");
     setScale(1);
     setSelectedIndex((selectedIndex + 1) % photos.length);
+    setTranslateX(0);
   }, [selectedIndex, photos.length]);
 
   const goPrev = useCallback(() => {
     if (selectedIndex === null) return;
-    setDirection("prev");
     setScale(1);
     setSelectedIndex((selectedIndex - 1 + photos.length) % photos.length);
+    setTranslateX(0);
   }, [selectedIndex, photos.length]);
 
   /* ================= KEYBOARD ================= */
@@ -100,32 +108,53 @@ const EventGallery = () => {
     return () => window.removeEventListener("keydown", handleKey);
   }, [selectedIndex, goNext, goPrev]);
 
-  /* ================= DOUBLE CLICK ZOOM ================= */
-
-  const handleDoubleClick = () => {
-    setScale((prev) => (prev === 1 ? 1.3 : 1));
-  };
-
-  /* ================= SWIPE ================= */
+  /* ================= SMOOTH SWIPE ================= */
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    setIsDragging(true);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    touchCurrentX.current = e.touches[0].clientX;
+    if (!isDragging || touchStartX.current === null) return;
+
+    const currentX = e.touches[0].clientX;
+    const diff = currentX - touchStartX.current;
+
+    setTranslateX(diff);
   };
 
   const handleTouchEnd = () => {
-    if (touchStartX.current !== null && touchCurrentX.current !== null) {
-      const diff = touchCurrentX.current - touchStartX.current;
+    setIsDragging(false);
 
-      if (diff > 80) goPrev();
-      if (diff < -80) goNext();
+    if (Math.abs(translateX) > 120) {
+      if (translateX > 0) goPrev();
+      else goNext();
     }
 
+    setTranslateX(0);
     touchStartX.current = null;
-    touchCurrentX.current = null;
+  };
+
+  /* ================= FORCE DOWNLOAD ================= */
+
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   /* ================= RENDER ================= */
@@ -136,7 +165,6 @@ const EventGallery = () => {
         <h1 className="text-3xl font-bold mb-10 text-center">{folderName}</h1>
 
         {loading && <p className="text-center">กำลังโหลด...</p>}
-
         {!loading && photos.length === 0 && (
           <p className="text-center">ไม่พบรูปภาพ</p>
         )}
@@ -164,9 +192,8 @@ const EventGallery = () => {
         {selectedIndex !== null && photos[selectedIndex] && (
           <div
             className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-            onClick={() => setSelectedIndex(null)} // คลิกพื้นที่ว่างปิด
+            onClick={() => setSelectedIndex(null)}
           >
-            {/* Stop propagation */}
             <div
               className="relative w-full h-full flex items-center justify-center overflow-hidden"
               onClick={(e) => e.stopPropagation()}
@@ -179,28 +206,38 @@ const EventGallery = () => {
                 <X size={24} />
               </button>
 
-              {/* Image Slide Container */}
-              <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-                <img
-                  key={photos[selectedIndex].id}
-                  src={photos[selectedIndex].previewUrl || ""}
-                  alt={photos[selectedIndex].name}
-                  className={`max-h-[80vh] max-w-[90vw] transition-all duration-500 ease-in-out ${
-                    direction === "next"
-                      ? "animate-slide-left"
-                      : direction === "prev"
-                        ? "animate-slide-right"
-                        : ""
-                  }`}
-                  style={{ transform: `scale(${scale})` }}
-                  onDoubleClick={handleDoubleClick}
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                />
-              </div>
+              {/* Desktop Arrows */}
+              <button
+                onClick={goPrev}
+                className="hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 bg-black/70 p-4 rounded-full text-white z-20"
+              >
+                <ChevronLeft size={28} />
+              </button>
 
-              {/* Zoom Buttons */}
+              <button
+                onClick={goNext}
+                className="hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 bg-black/70 p-4 rounded-full text-white z-20"
+              >
+                <ChevronRight size={28} />
+              </button>
+
+              {/* Image */}
+              <img
+                src={photos[selectedIndex].previewUrl || ""}
+                alt={photos[selectedIndex].name}
+                className={`max-h-[80vh] max-w-[90vw] transition-transform duration-300 ${
+                  isDragging ? "" : "ease-out"
+                }`}
+                style={{
+                  transform: `translateX(${translateX}px) scale(${scale})`,
+                }}
+                onDoubleClick={() => setScale((prev) => (prev === 1 ? 1.3 : 1))}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              />
+
+              {/* Zoom */}
               <div className="absolute bottom-20 flex gap-4 z-20">
                 <button
                   onClick={() => setScale((s) => Math.min(s + 0.3, 3))}
@@ -218,13 +255,18 @@ const EventGallery = () => {
 
               {/* Download */}
               {photos[selectedIndex].downloadUrl && (
-                <a
-                  href={photos[selectedIndex].downloadUrl}
+                <button
+                  onClick={() =>
+                    handleDownload(
+                      photos[selectedIndex].downloadUrl!,
+                      photos[selectedIndex].name,
+                    )
+                  }
                   className="absolute bottom-6 bg-primary text-white px-6 py-3 rounded-lg flex items-center gap-2 z-20"
                 >
                   <Download size={18} />
                   Download
-                </a>
+                </button>
               )}
             </div>
           </div>
