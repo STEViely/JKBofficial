@@ -4,7 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  base: "./",   // 👈 เพิ่มบรรทัดนี้
+  base: "/",   // 👈 เพิ่มบรรทัดนี้
 
   server: {
     host: "::",
