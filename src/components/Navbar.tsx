@@ -1,99 +1,105 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Globe } from "lucide-react";
-import { useLang } from "@/lib/i18n";
-import { motion, AnimatePresence } from "framer-motion";
-import logo from "@/assets/logo.png";
+import { google } from "googleapis";
 
-const Navbar = () => {
-  const [open, setOpen] = useState(false);
-  const { lang, setLang, t } = useLang();
-  const location = useLocation();
+export default async function handler(req, res) {
+  try {
+    const { folderId, fileId, download } = req.query;
 
-  const links = [
-    { to: "/", label: t.nav.home },
-    { to: "/about", label: t.nav.about },
-    { to: "/portfolio", label: t.nav.portfolio },
-    { to: "/download", label: t.nav.download },
-    { to: "/contact", label: t.nav.contact },
-  ];
+    const auth = new google.auth.GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+      scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+    });
 
-  // 🔥 แก้ตรงนี้
-  const isActive = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/";
+    const drive = google.drive({ version: "v3", auth });
+
+    /* ================= DOWNLOAD FILE ================= */
+
+    if (download && fileId) {
+      const fileMeta = await drive.files.get({
+        fileId,
+        fields: "name, mimeType",
+      });
+
+      const fileName = fileMeta.data.name;
+      const mimeType = fileMeta.data.mimeType;
+
+      const fileStream = await drive.files.get(
+        {
+          fileId,
+          alt: "media",
+        },
+        { responseType: "stream" }
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`
+      );
+      res.setHeader("Content-Type", mimeType);
+
+      fileStream.data.pipe(res);
+      return;
     }
-    return location.pathname.startsWith(path);
-  };
 
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="container mx-auto px-4 flex items-center justify-between h-16">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={logo} alt="JKB Production" className="h-10 w-auto" />
-        </Link>
+    /* ================= FETCH FOLDER ================= */
 
-        {/* Desktop */}
-        <div className="hidden md:flex items-center gap-8">
-          {links.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`text-sm font-medium uppercase tracking-wider transition-colors hover:text-primary ${
-                isActive(link.to) ? "text-primary" : "text-foreground/70"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <button
-            onClick={() => setLang(lang === "th" ? "en" : "th")}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            <Globe className="w-4 h-4" />
-            {lang === "th" ? "EN" : "TH"}
-          </button>
-        </div>
+    if (!folderId) {
+      return res.status(400).json({ error: "Missing folderId" });
+    }
 
-        {/* Mobile */}
-        <div className="flex md:hidden items-center gap-3">
-          <button
-            onClick={() => setLang(lang === "th" ? "en" : "th")}
-            className="text-sm text-muted-foreground hover:text-primary"
-          >
-            <Globe className="w-5 h-5" />
-          </button>
-          <button onClick={() => setOpen(!open)} className="text-foreground">
-            {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-      </div>
+    const folderMeta = await drive.files.get({
+      fileId: folderId,
+      fields: "name",
+    });
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-background border-b border-border overflow-hidden"
-          >
-            {links.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                onClick={() => setOpen(false)}
-                className={`block px-6 py-3 text-sm uppercase tracking-wider transition-colors hover:bg-secondary ${
-                  isActive(link.to) ? "text-primary" : "text-foreground/70"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </nav>
-  );
-};
+    const folderName = folderMeta.data.name || "Event Gallery";
 
-export default Navbar;
+    let allFiles = [];
+    let nextPageToken = null;
+
+    do {
+      const response = await drive.files.list({
+        q: `'${folderId}' in parents and trashed = false`,
+        fields: "nextPageToken, files(id, name, mimeType, createdTime)",
+        orderBy: "createdTime desc",
+        pageSize: 1000,
+        pageToken: nextPageToken || undefined,
+      });
+
+      allFiles = [...allFiles, ...(response.data.files || [])];
+      nextPageToken = response.data.nextPageToken;
+
+    } while (nextPageToken);
+
+    const files = allFiles.map((file) => {
+      const isFolder =
+        file.mimeType === "application/vnd.google-apps.folder";
+
+      return {
+        id: file.id,
+        name: file.name,
+        type: isFolder ? "folder" : "image",
+        createdTime: file.createdTime || null,
+
+        previewUrl: !isFolder
+          ? `https://drive.google.com/thumbnail?id=${file.id}&sz=w1000`
+          : null,
+
+        downloadUrl: !isFolder
+          ? `/api/photos/${folderId}?download=1&fileId=${file.id}`
+          : null,
+      };
+    });
+
+    return res.status(200).json({
+      folderName,
+      files,
+    });
+
+  } catch (error) {
+    console.error("Drive API error:", error);
+    return res.status(500).json({
+      error: "Failed to fetch data",
+      details: error.message,
+    });
+  }
+}
