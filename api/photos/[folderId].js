@@ -4,12 +4,6 @@ export default async function handler(req, res) {
   try {
     const { folderId, fileId, download } = req.query;
 
-    if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-      return res.status(500).json({
-        error: "Missing GOOGLE_SERVICE_ACCOUNT_JSON",
-      });
-    }
-
     const auth = new google.auth.GoogleAuth({
       credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
       scopes: ["https://www.googleapis.com/auth/drive.readonly"],
@@ -25,20 +19,20 @@ export default async function handler(req, res) {
         fields: "name, mimeType",
       });
 
-      const fileName = fileMeta.data.name || "download";
-      const mimeType = fileMeta.data.mimeType || "application/octet-stream";
+      const fileName = fileMeta.data.name;
+      const mimeType = fileMeta.data.mimeType;
 
       const fileStream = await drive.files.get(
         {
           fileId,
           alt: "media",
         },
-        { responseType: "stream" }
+        { responseType: "stream" },
       );
 
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${fileName}"`
+        `attachment; filename="${fileName}"`,
       );
       res.setHeader("Content-Type", mimeType);
 
@@ -52,7 +46,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing folderId" });
     }
 
-    // ดึงชื่อโฟลเดอร์
     const folderMeta = await drive.files.get({
       fileId: folderId,
       fields: "name",
@@ -60,41 +53,31 @@ export default async function handler(req, res) {
 
     const folderName = folderMeta.data.name || "Event Gallery";
 
-    /* ========= FIX: Pagination ดึงครบทุกไฟล์ ========= */
+    const response = await drive.files.list({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: "files(id, name, mimeType, createdTime)",
+      orderBy: "createdTime desc",
+    });
 
-    let allFiles = [];
-    let pageToken = null;
+    const files = (response.data.files || []).map((file) => {
+      const isFolder = file.mimeType === "application/vnd.google-apps.folder";
 
-    do {
-      const response = await drive.files.list({
-        q: `'${folderId}' in parents and trashed = false`,
-        fields:
-          "nextPageToken, files(id, name, mimeType, createdTime)",
-        orderBy: "createdTime desc",
-        pageSize: 1000,
-        pageToken: pageToken || undefined,
-      });
+      return {
+        id: file.id,
+        name: file.name,
+        type: isFolder ? "folder" : "image",
+        createdTime: file.createdTime || null,
 
-      allFiles = allFiles.concat(response.data.files || []);
-      pageToken = response.data.nextPageToken;
-    } while (pageToken);
+        previewUrl: !isFolder
+          ? `https://drive.google.com/thumbnail?id=${file.id}&sz=w1000`
+          : null,
 
-    /* ========= แปลงข้อมูลให้ frontend ========= */
-
-    const files = allFiles
-      .filter((file) => file.mimeType?.startsWith("image/")) // เอาเฉพาะรูปจริง ๆ
-      .map((file) => {
-        return {
-          id: file.id,
-          name: file.name,
-          type: "image",
-          createdTime: file.createdTime || null,
-
-          previewUrl: `https://drive.google.com/thumbnail?id=${file.id}&sz=w2000`,
-
-          downloadUrl: `/api/photos/${folderId}?download=1&fileId=${file.id}`,
-        };
-      });
+        // 👇 เปลี่ยนมาใช้ API ตัวเอง
+        downloadUrl: !isFolder
+          ? `/api/photos/${folderId}?download=1&fileId=${file.id}`
+          : null,
+      };
+    });
 
     return res.status(200).json({
       folderName,
