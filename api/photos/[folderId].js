@@ -92,13 +92,15 @@
 //   }
 // }
 
+export const config = {
+  runtime: "nodejs",
+};
+
 import { google } from "googleapis";
 
 export default async function handler(req, res) {
   try {
-    const { folderId, download, fileId } = req.query;
-    const page = parseInt(req.query.page || "1");
-    const limit = parseInt(req.query.limit || "100");
+    const { folderId } = req.query;
 
     if (!folderId) {
       return res.status(400).json({ error: "Missing folderId" });
@@ -110,36 +112,6 @@ export default async function handler(req, res) {
     });
 
     const drive = google.drive({ version: "v3", auth });
-
-    /* ================= DOWNLOAD MODE ================= */
-
-    if (download && fileId) {
-      const fileMeta = await drive.files.get({
-        fileId,
-        fields: "name, mimeType",
-      });
-
-      const fileStream = await drive.files.get(
-        { fileId, alt: "media" },
-        { responseType: "stream" }
-      );
-
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${fileMeta.data.name}"`
-      );
-      res.setHeader("Content-Type", fileMeta.data.mimeType);
-
-      fileStream.data.pipe(res);
-      return;
-    }
-
-    /* ================= LIST MODE ================= */
-
-    const folderMeta = await drive.files.get({
-      fileId: folderId,
-      fields: "name",
-    });
 
     let allFiles = [];
     let nextPageToken = null;
@@ -157,36 +129,27 @@ export default async function handler(req, res) {
       nextPageToken = response.data.nextPageToken;
     } while (nextPageToken);
 
-    const imageFiles = allFiles.filter(
-      (file) => file.mimeType !== "application/vnd.google-apps.folder"
-    );
-
-    const start = (page - 1) * limit;
-    const end = start + limit;
-
-    const paginated = imageFiles.slice(start, end);
-
-    const files = paginated.map((file) => ({
-      id: file.id,
-      name: file.name,
-      createdTime: file.createdTime || null,
-      previewUrl: `https://drive.google.com/thumbnail?id=${file.id}&sz=w1000`,
-      downloadUrl: `/api/photos/${folderId}?download=1&fileId=${file.id}`,
-    }));
+    const files = allFiles
+      .filter(
+        (file) => file.mimeType !== "application/vnd.google-apps.folder"
+      )
+      .map((file) => ({
+        id: file.id,
+        name: file.name,
+        createdTime: file.createdTime || null,
+        previewUrl: `https://drive.google.com/thumbnail?id=${file.id}&sz=w1000`,
+        downloadUrl: `/api/photos/${folderId}?download=1&fileId=${file.id}`,
+      }));
 
     return res.status(200).json({
-      folderName: folderMeta.data.name,
+      folderName: "Event Gallery",
       files,
-      hasMore: end < imageFiles.length,
-      nextPage: page + 1,
     });
-
   } catch (error) {
-    console.error("Drive API Error:", error);
+    console.error("Drive API error:", error);
     return res.status(500).json({
-      error: "Server error",
-      message: error.message,
+      error: "Failed to fetch data",
+      details: error.message,
     });
   }
 }
-
